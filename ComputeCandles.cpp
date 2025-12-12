@@ -13,16 +13,29 @@ ComputeCandlesticks::ComputeCandlesticks()
 
 }
 
-std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(
-    std::string inputType,
-    std::string symbol,
-    std::string timeframe)
+std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks()
 {
+
+    std::cout << "Enter a pair e.g. bid BTC/USDT 1h" << std::endl;
+    std::string line;
+    std::getline(std::cin, line);
+    std::stringstream ss(line);
+    std::string word;
+    std::vector<std::string> words;
+
+    // Extract words one by one using the >> operator
+    while (ss >> word) {
+        words.push_back(word);
+    }
+
+    std::string inputType = words[0];
+    std::string symbol = words[1];
+    std::string timeframe = words[2];
+    
     auto orders = CSVReader::readCSV("20200601.csv");
 
     OrderBookType type = OrderBookEntry::stringToOrderBookType(inputType);
 
-    // Vector is {open, high, low, close}
     std::map<time_t, std::vector<double>> buckets;
 
     for (const OrderBookEntry& entry : orders)
@@ -43,7 +56,7 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(
             }
             else
             {
-                std::vector<double> candle = buckets[key];
+                std::vector<double>& candle = buckets[key];
 
                 // Update high & low
                 if (price > candle[1]) candle[1] = price;
@@ -59,10 +72,10 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(
     // Convert map to final vector
     std::vector<Candlestick> result;
 
-    for (std::__1::pair<const time_t, std::__1::vector<double>>& keyValue : buckets)
+    for (std::pair<const time_t, std::__1::vector<double>>& keyValue : buckets)
     {
         time_t key = keyValue.first;
-        std::vector<double> candle = keyValue.second;
+        std::vector<double>& candle = keyValue.second;
 
         result.emplace_back(
             TimeToString(key), // date
@@ -73,31 +86,52 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(
         );
     }
 
+    std::cout << words[2] << " " << words[0] << " Candlesticks for " << words[1] << std::endl;
+
+    std::cout 
+    << std::left  << std::setw(20) << "Date"
+    << std::right << std::setw(10) << "Open"
+    << std::setw(10) << "High"
+    << std::setw(10) << "Low"
+    << std::setw(10) << "Close"
+    << std::endl;
+
+    for (const auto& candle : result)
+    {
+        std::cout
+            << std::left  << std::setw(20) << candle.date
+            << std::right << std::setw(10) << candle.open
+            << std::setw(10) << candle.high
+            << std::setw(10) << candle.low
+            << std::setw(10) << candle.close
+            << std::endl;
+    }
+
     return result;
 }
 
 
 time_t ComputeCandlesticks::to_time_t(const std::string& ts)
 {
-    int y, mon, d, h, min, sec;
+    int year, month, day, h, m, s;
     long micro;
 
     char slash1, slash2, space, colon1, colon2, dot;
 
     std::stringstream ss(ts.substr(0, 26)); // cut at microsecond region
 
-    ss >> y >> slash1 >> mon >> slash2 >> d
+    ss >> year >> slash1 >> month >> slash2 >> day
        >> space
-       >> h >> colon1 >> min >> colon2 >> sec
+       >> h >> colon1 >> m >> colon2 >> s
        >> dot >> micro;
 
     std::tm t = {};
-    t.tm_year = y - 1900;
-    t.tm_mon  = mon - 1;
-    t.tm_mday = d;
+    t.tm_year = year - 1900;
+    t.tm_mon  = month - 1;
+    t.tm_mday = day;
     t.tm_hour = h;
-    t.tm_min  = min;
-    t.tm_sec  = sec;
+    t.tm_min  = m;
+    t.tm_sec  = s;
 
     return std::mktime(&t); // local time
 }

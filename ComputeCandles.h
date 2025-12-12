@@ -9,7 +9,7 @@ class ComputeCandlesticks
     public:
         ComputeCandlesticks();
 
-        static std::vector<Candlestick> GetCandlesticks(std::string inputType, std::string input, std::string timeframe);
+        static std::vector<Candlestick> GetCandlesticks();
 
     private:
         static time_t to_time_t(const std::string& ts);
