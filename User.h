@@ -3,6 +3,7 @@
 
 class User
 {
+    friend class UserManager;
 public:
     User() = default;
 
@@ -20,6 +21,7 @@ public:
 
     std::string toCSV() const;
     static User fromCSV(const std::string& line);
+    void updatePasswordHash(size_t newHash);
 
 private:
     // Unique Username
@@ -27,4 +29,5 @@ private:
     std::string fullName;
     std::string email;
     size_t passwordHash;      // hashed password
+    void setPasswordHash(size_t newHash);
 };

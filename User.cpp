@@ -51,5 +51,13 @@ User User::fromCSV(const std::string& line)
     std::getline(ss, email, ',');
     std::getline(ss, hashStr, ',');
 
-    return User(username, fullName, email, std::stoull(hashStr));
+    size_t passwordHash = std::stoull(hashStr);
+    return User(username, fullName, email, passwordHash);
 }
+
+void User::setPasswordHash(size_t newHash){
+    passwordHash = newHash;
+}
+
+
+
