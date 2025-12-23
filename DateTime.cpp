@@ -37,7 +37,10 @@ DateTime DateTime::toBucket(const std::string& timeframe) const
 {
     DateTime bucket = *this;
 
-    if (timeframe == "5m") {
+    if (timeframe == "1m") {      // 1-minute bucket
+        bucket.second = 0;
+    }
+    else if (timeframe == "5m") {
         bucket.minute = (bucket.minute / 5) * 5;
         bucket.second = 0;
     }
