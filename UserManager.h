@@ -5,6 +5,13 @@
 class UserManager {
 public:
     UserManager();
+
+    // Show login/register/forgot password menu
+    void showAuthMenu();
+    bool isLoggedIn() const;
+    // gets logged-in user
+    User* getCurrentUser(); 
+
     User* login(
         const std::string& username,
         const std::string& password
@@ -15,15 +22,13 @@ public:
         const std::string& email,
         const std::string& password
     );
-    
-    bool resetPassword(
-        const std::string& username,
-        const std::string& email,
-        const std::string& newPassword,
-        const std::string& confirmPassword
-    );
+
+    bool resetPassword();
 
 private:
+    // Logged in user
+    User* currentUser = nullptr;
+
     void loadUsers();
     void saveUser(const User& user);
     std::vector<User> users;

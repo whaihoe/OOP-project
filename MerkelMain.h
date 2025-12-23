@@ -4,15 +4,17 @@
 #include "OrderBookEntry.h"
 #include "OrderBook.h"
 #include "Wallet.h"
+#include "User.h"
 
 
 class MerkelMain
 {
     public:
-        MerkelMain();
+        MerkelMain(User& user);
         /** Call this to start the sim */
         void init();
     private: 
+        User& user; 
         void printMenu();
         void printHelp();
         void printMarketStats();

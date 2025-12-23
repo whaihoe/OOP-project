@@ -20,14 +20,14 @@ void UserManager::loadUsers()
     while (std::getline(file, line))
     {
         if (line.empty()) {
-            continue; // 👈 CRITICAL
+            continue;
         }
 
         try {
             users.push_back(User::fromCSV(line));
         }
         catch (const std::exception& e) {
-            std::cerr << "Skipping invalid CSV line: " << e.what() << std::endl;
+
         }
     }
 }
@@ -40,17 +40,18 @@ void UserManager::saveUser(const User& user)
 
 User* UserManager::login(const std::string& username, const std::string& password)
 {
-    size_t inputHash = hashPassword(password);
+     size_t inputHash = hashPassword(password);
 
     for (auto& user : users)
     {
         if (user.getUsername() == username &&
             user.getPasswordHash() == inputHash)
         {
-            return &user;
+            // saves to currentUser
+            currentUser = &user;
+            return currentUser;
         }
     }
-
     return nullptr;
 }
 
@@ -66,7 +67,7 @@ bool UserManager::registerUser(
 )
 {
     if (userExists(fullName, email)) {
-        std::cout << "User already registered.\n";
+        std::cout << "User already registered." << std::endl;
         return false;
     }
 
@@ -120,13 +121,22 @@ std::string UserManager::generateUsername()
     return username;
 }
 
-bool UserManager::resetPassword(
-    const std::string& username,
-    const std::string& email,
-    const std::string& newPassword,
-    const std::string& confirmPassword
-)
+bool UserManager::resetPassword()
 {
+    std::string username, email, newPassword, confirmPassword;
+
+    std::cout << "Enter your username: ";
+    std::getline(std::cin, username);
+
+    std::cout << "Enter your email: ";
+    std::getline(std::cin, email);
+
+    std::cout << "Enter new password: ";
+    std::getline(std::cin, newPassword);
+
+    std::cout << "Confirm new password: ";
+    std::getline(std::cin, confirmPassword);
+
     if (newPassword != confirmPassword) {
         std::cout << "Passwords do not match." << std::endl;
         return false;
@@ -156,68 +166,128 @@ bool UserManager::resetPassword(
     return false;
 }
 
+bool UserManager::isLoggedIn() const
+{
+    return currentUser != nullptr;
+}
 
+User* UserManager::getCurrentUser()
+{
+    return currentUser;
+}
 
-int main(){
-    UserManager manager;
-
-    std::string fullname;
-    std::string email;
-    std::string username;
-    std::string password;
-
-    std::cout << "1. Register" << std::endl << "2. Login" << std::endl << "3. Forget password" << std::endl;
-    std::cout << "Enter your choice: ";
-
-    int input;
-    std::cin >> input;
-    std::cin.ignore(); 
-
-    if(input == 1)
+void UserManager::showAuthMenu()
+{
+    while (!isLoggedIn())
     {
-        std::cout << "Enter your name: ";
-        std::getline(std::cin, fullname);
+        std::cout << "==== Welcome ====" << std::endl;
+        std::cout << "1. Register" << std::endl;
+        std::cout << "2. Login" << std::endl;
+        std::cout << "3. Forgot Password" << std::endl;
+        std::cout << "0. Exit" << std::endl;
+        std::cout << "Choice: ";
 
-        std::cout << "Enter your email: ";
-        std::getline(std::cin, email);
+        int choice;
+        std::cin >> choice;
+        std::cin.ignore();
 
-        std::cout << "Enter your password: ";
-        std::getline(std::cin, password);
+        if (choice == 1)
+        {
+            std::string name, email, password;
+            std::cout << "Full name: ";
+            std::getline(std::cin, name);
+            std::cout << "Email: ";
+            std::getline(std::cin, email);
+            std::cout << "Password: ";
+            std::getline(std::cin, password);
 
-        manager.registerUser(fullname, email, password);
-    }
-    
-    else if(input == 2)
-    {
-        std::cout << "Enter your username: ";
-        std::getline(std::cin, username);
+            registerUser(name, email, password);
+        }
+        else if (choice == 2)
+        {
+            std::string username, password;
+            std::cout << "Username: ";
+            std::getline(std::cin, username);
+            std::cout << "Password: ";
+            std::getline(std::cin, password);
 
-        std::cout << "Enter your password: ";
-        std::getline(std::cin, password);
-
-        auto loggedInUser = manager.login(username, password);
-        if (loggedInUser) {
-            std::cout << "Welcome " << loggedInUser->getFullName() << std::endl;
-        } else {
-            std::cout << "Error logging in. Please try again." << std::endl;
+            if (!login(username, password))
+                std::cout << "Invalid credentials." << std::endl;
+        }
+        else if (choice == 3)
+        {
+            resetPassword();
+        }
+        else if (choice == 0)
+        {
+            std::exit(0);
         }
     }
-    else if(input == 3)
-    {
-        std::string username, email, newPass, confirmPass;
-
-        std::cout << "Enter your username: ";
-        std::getline(std::cin, username);
-
-        std::cout << "Enter your email: ";
-        std::getline(std::cin, email);
-
-        std::cout << "Enter new password: ";
-        std::getline(std::cin, newPass);
-
-        std::cout << "Confirm new password: ";
-        std::getline(std::cin, confirmPass);
-
-        manager.resetPassword(username, email, newPass, confirmPass);
-    }
 }
+
+
+
+
+// int main(){
+    // UserManager manager;
+
+    // std::string fullname;
+    // std::string email;
+    // std::string username;
+    // std::string password;
+
+    // std::cout << "1. Register" << std::endl << "2. Login" << std::endl << "3. Forget password" << std::endl;
+    // std::cout << "Enter your choice: ";
+
+    // int input;
+    // std::cin >> input;
+    // std::cin.ignore(); 
+
+    // if(input == 1)
+    // {
+    //     std::cout << "Enter your name: ";
+    //     std::getline(std::cin, fullname);
+
+    //     std::cout << "Enter your email: ";
+    //     std::getline(std::cin, email);
+
+    //     std::cout << "Enter your password: ";
+    //     std::getline(std::cin, password);
+
+    //     manager.registerUser(fullname, email, password);
+    // }
+    
+    // else if(input == 2)
+    // {
+    //     std::cout << "Enter your username: ";
+    //     std::getline(std::cin, username);
+
+    //     std::cout << "Enter your password: ";
+    //     std::getline(std::cin, password);
+
+    //     auto loggedInUser = manager.login(username, password);
+    //     if (loggedInUser) {
+    //         std::cout << "Welcome " << loggedInUser->getFullName() << std::endl;
+    //     } else {
+    //         std::cout << "Error logging in. Please try again." << std::endl;
+    //     }
+    // }
+    // else if(input == 3)
+    // {
+    //     std::string username, email, newPass, confirmPass;
+
+    //     std::cout << "Enter your username: ";
+    //     std::getline(std::cin, username);
+
+    //     std::cout << "Enter your email: ";
+    //     std::getline(std::cin, email);
+
+    //     std::cout << "Enter new password: ";
+    //     std::getline(std::cin, newPass);
+
+    //     std::cout << "Confirm new password: ";
+    //     std::getline(std::cin, confirmPass);
+
+    //     manager.resetPassword(username, email, newPass, confirmPass);
+    // }
+// }

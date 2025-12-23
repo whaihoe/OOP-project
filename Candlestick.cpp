@@ -23,6 +23,6 @@ close(_close)
 
 }
 
-int main(){
-    std::vector<Candlestick> candles = ComputeCandlesticks::GetCandlesticks();
-}
+// int main(){
+//     std::vector<Candlestick> candles = ComputeCandlesticks::GetCandlesticks();
+// }

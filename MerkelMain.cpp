@@ -3,11 +3,13 @@
 #include <vector>
 #include "OrderBookEntry.h"
 #include "CSVReader.h"
+#include "ComputeCandles.h"
 
-MerkelMain::MerkelMain()
+MerkelMain::MerkelMain(User& user) : user(user) 
 {
 
 }
+
 
 void MerkelMain::init()
 {
@@ -18,6 +20,8 @@ void MerkelMain::init()
 
     while(true)
     {
+        std::cout << std::endl << "==== Welcome, " << user.getFullName() << " ===="<< std::endl;
+
         printMenu();
         input = getUserOption();
         processUserOption(input);
@@ -37,8 +41,10 @@ void MerkelMain::printMenu()
     std::cout << "4: Make a bid " << std::endl;
     // 5 print wallet
     std::cout << "5: Print wallet " << std::endl;
-    // 6 continue   
-    std::cout << "6: Continue " << std::endl;
+    // 6 print candlestickdata
+    std::cout << "6: Print candlestick " << std::endl;
+    // 7 continue   
+    std::cout << "7: Continue " << std::endl;
 
     std::cout << "============== " << std::endl;
 
@@ -226,6 +232,10 @@ void MerkelMain::processUserOption(int userOption)
         printWallet();
     }
     if (userOption == 6) 
+    {
+        ComputeCandlesticks::GetCandlesticks();
+    }   
+    if (userOption == 7) 
     {
         gotoNextTimeframe();
     }       
