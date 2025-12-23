@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <random>
+#include <termios.h>
+#include <unistd.h>
 
 UserManager::UserManager()
 {
@@ -131,11 +133,50 @@ bool UserManager::resetPassword()
     std::cout << "Enter your email: ";
     std::getline(std::cin, email);
 
-    std::cout << "Enter new password: ";
-    std::getline(std::cin, newPassword);
+    // For password censor
+    char ch;
 
-    std::cout << "Confirm new password: ";
-    std::getline(std::cin, confirmPassword);
+    // Disable terminal echo
+    termios oldt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    termios newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    std::cout << "Enter new password: ";
+    while (std::cin.get(ch) && ch != '\n') {
+        if (ch == 127 || ch == 8) { // Handle backspace
+            if (!newPassword.empty()) {
+                newPassword.pop_back();
+                std::cout << "\b \b" << std::flush;
+            }
+        } else {
+            newPassword.push_back(ch);
+            std::cout << '*' << std::flush;
+        }
+    }
+
+    std::cout << std::endl << "Confirm new password: ";
+    while (std::cin.get(ch) && ch != '\n') {
+        if (ch == 127 || ch == 8) { // Handle backspace
+            if (!newPassword.empty()) {
+                newPassword.pop_back();
+                std::cout << "\b \b" << std::flush;
+            }
+        } else {
+            newPassword.push_back(ch);
+            std::cout << '*' << std::flush;
+        }
+    }
+
+    // Restore terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    std::cout << std::endl;
+
+    // std::cout << "Confirm new password: ";
+    // std::getline(std::cin, confirmPassword);
+
+
 
     if (newPassword != confirmPassword) {
         std::cout << "Passwords do not match." << std::endl;
@@ -198,18 +239,71 @@ void UserManager::showAuthMenu()
             std::getline(std::cin, name);
             std::cout << "Email: ";
             std::getline(std::cin, email);
+
+            // For password censor
+            char ch;
+    
+            // Disable terminal echo
+            termios oldt;
+            tcgetattr(STDIN_FILENO, &oldt);
+            termios newt = oldt;
+            newt.c_lflag &= ~(ICANON | ECHO);
+            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
             std::cout << "Password: ";
-            std::getline(std::cin, password);
+            while (std::cin.get(ch) && ch != '\n') {
+                if (ch == 127 || ch == 8) { // Handle backspace
+                    if (!password.empty()) {
+                        password.pop_back();
+                        std::cout << "\b \b" << std::flush;
+                    }
+                } else {
+                    password.push_back(ch);
+                    std::cout << '*' << std::flush;
+                }
+            }
+
+            // Restore terminal settings
+            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+            std::cout << std::endl;
+
+            // std::cout << "Password: ";
+            // std::getline(std::cin, password);
 
             registerUser(name, email, password);
         }
+
         else if (choice == 2)
         {
             std::string username, password;
             std::cout << "Username: ";
             std::getline(std::cin, username);
+            // For password censor
+            char ch;
+    
+            // Disable terminal echo
+            termios oldt;
+            tcgetattr(STDIN_FILENO, &oldt);
+            termios newt = oldt;
+            newt.c_lflag &= ~(ICANON | ECHO);
+            tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
             std::cout << "Password: ";
-            std::getline(std::cin, password);
+            while (std::cin.get(ch) && ch != '\n') {
+                if (ch == 127 || ch == 8) { // Handle backspace
+                    if (!password.empty()) {
+                        password.pop_back();
+                        std::cout << "\b \b" << std::flush;
+                    }
+                } else {
+                    password.push_back(ch);
+                    std::cout << '*' << std::flush;
+                }
+            }
+            
+            // Restore terminal settings
+            tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+            std::cout << std::endl;
 
             if (!login(username, password))
                 std::cout << "Invalid credentials." << std::endl;
@@ -229,65 +323,7 @@ void UserManager::showAuthMenu()
 
 
 // int main(){
-    // UserManager manager;
+//     UserManager manager;
 
-    // std::string fullname;
-    // std::string email;
-    // std::string username;
-    // std::string password;
-
-    // std::cout << "1. Register" << std::endl << "2. Login" << std::endl << "3. Forget password" << std::endl;
-    // std::cout << "Enter your choice: ";
-
-    // int input;
-    // std::cin >> input;
-    // std::cin.ignore(); 
-
-    // if(input == 1)
-    // {
-    //     std::cout << "Enter your name: ";
-    //     std::getline(std::cin, fullname);
-
-    //     std::cout << "Enter your email: ";
-    //     std::getline(std::cin, email);
-
-    //     std::cout << "Enter your password: ";
-    //     std::getline(std::cin, password);
-
-    //     manager.registerUser(fullname, email, password);
-    // }
-    
-    // else if(input == 2)
-    // {
-    //     std::cout << "Enter your username: ";
-    //     std::getline(std::cin, username);
-
-    //     std::cout << "Enter your password: ";
-    //     std::getline(std::cin, password);
-
-    //     auto loggedInUser = manager.login(username, password);
-    //     if (loggedInUser) {
-    //         std::cout << "Welcome " << loggedInUser->getFullName() << std::endl;
-    //     } else {
-    //         std::cout << "Error logging in. Please try again." << std::endl;
-    //     }
-    // }
-    // else if(input == 3)
-    // {
-    //     std::string username, email, newPass, confirmPass;
-
-    //     std::cout << "Enter your username: ";
-    //     std::getline(std::cin, username);
-
-    //     std::cout << "Enter your email: ";
-    //     std::getline(std::cin, email);
-
-    //     std::cout << "Enter new password: ";
-    //     std::getline(std::cin, newPass);
-
-    //     std::cout << "Confirm new password: ";
-    //     std::getline(std::cin, confirmPass);
-
-    //     manager.resetPassword(username, email, newPass, confirmPass);
-    // }
+//     manager.showAuthMenu();
 // }
