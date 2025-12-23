@@ -20,6 +20,5 @@ struct DateTime
     // Normalize to bucket start based on timeframe
     DateTime toBucket(const std::string& timeframe) const;
 
-    // Check if two DateTimes are the same bucket
-    bool sameBucket(const DateTime& other) const;
+    bool isAfter(const DateTime& other) const;
 };

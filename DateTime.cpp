@@ -67,14 +67,16 @@ DateTime DateTime::toBucket(const std::string& timeframe) const
     return bucket;
 }
 
-bool DateTime::sameBucket(const DateTime& other) const
+bool DateTime::isAfter(const DateTime& other) const
 {
-    return year   == other.year &&
-           month  == other.month &&
-           day    == other.day &&
-           hour   == other.hour &&
-           minute == other.minute;
+    if (year != other.year) return year > other.year;
+    if (month != other.month) return month > other.month;
+    if (day != other.day) return day > other.day;
+    if (hour != other.hour) return hour > other.hour;
+    if (minute != other.minute) return minute > other.minute;
+    return second > other.second;
 }
+
 
 // int main(){
 

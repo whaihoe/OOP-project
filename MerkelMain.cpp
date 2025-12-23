@@ -193,7 +193,7 @@ int MerkelMain::getUserOption()
 {
     int userOption = 0;
     std::string line;
-    std::cout << "Type in 1-6" << std::endl;
+    std::cout << "Type in 1-7" << std::endl;
     std::getline(std::cin, line);
     try{
         userOption = std::stoi(line);
@@ -233,7 +233,7 @@ void MerkelMain::processUserOption(int userOption)
     }
     if (userOption == 6) 
     {
-        ComputeCandlesticks::GetCandlesticks();
+        ComputeCandlesticks::GetCandlesticks(currentTime);
     }   
     if (userOption == 7) 
     {

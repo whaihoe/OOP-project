@@ -7,7 +7,7 @@
 
 ComputeCandlesticks::ComputeCandlesticks() {}
 
-std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks()
+std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string& CurrentTime)
 {
     std::cout << "Enter a pair e.g. bid BTC/USDT 1h" << std::endl;
     std::string line;
@@ -30,6 +30,9 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks()
     auto orders = CSVReader::readCSV("20200601.csv");
     OrderBookType type = OrderBookEntry::stringToOrderBookType(inputType);
 
+    // get current time
+    DateTime simulatedNow = DateTime::fromString(CurrentTime);
+
     // Map with string key (bucketed datetime) -> {open, high, low, close}
     std::map<std::string, std::vector<double>> buckets;
 
@@ -38,6 +41,10 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks()
         if (entry.product == symbol && entry.orderType == type)
         {
             DateTime dt = DateTime::fromString(entry.timestamp);
+
+            // To skip the timeframes after current timestamp
+            if (dt.isAfter(simulatedNow)) continue;
+
             DateTime bucket = dt.toBucket(timeframe);
             std::string key = bucket.toString();
 
