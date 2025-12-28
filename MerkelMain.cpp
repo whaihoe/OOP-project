@@ -5,7 +5,10 @@
 #include "CSVReader.h"
 #include "ComputeCandles.h"
 
-MerkelMain::MerkelMain(User& user) : user(user) 
+MerkelMain::MerkelMain(User& user)
+    : user(user),
+    transactionLogger(user.getUsername()),
+    wallet(user.getUsername())
 {
 
 }
@@ -15,8 +18,6 @@ void MerkelMain::init()
 {
     int input;
     currentTime = orderBook.getEarliestTime();
-
-    wallet.insertCurrency("BTC", 10);
 
     while(true)
     {
@@ -43,8 +44,12 @@ void MerkelMain::printMenu()
     std::cout << "5: Print wallet " << std::endl;
     // 6 print candlestickdata
     std::cout << "6: Print candlestick " << std::endl;
-    // 7 continue   
-    std::cout << "7: Continue " << std::endl;
+    // 7 deposit into wallet   
+    std::cout << "7: Deposit " << std::endl;
+    // 8 withdraw from wallet
+    std::cout << "8: Withdraw " << std::endl;
+    // 9 continue to next timeframe
+    std::cout << "9: Continue " << std::endl;
 
     std::cout << "============== " << std::endl;
 
@@ -108,11 +113,12 @@ void MerkelMain::enterAsk()
                 tokens[0], 
                 OrderBookType::ask 
             );
-            obe.username = "simuser";
+            obe.username = user.getUsername();;
             if (wallet.canFulfillOrder(obe))
             {
                 std::cout << "Wallet looks good. " << std::endl;
                 orderBook.insertOrder(obe);
+                transactionLogger.log(currentTime, obe.price, obe.amount, obe.product, "ask");
             }
             else {
                 std::cout << "Wallet has insufficient funds . " << std::endl;
@@ -144,12 +150,13 @@ void MerkelMain::enterBid()
                 tokens[0], 
                 OrderBookType::bid 
             );
-            obe.username = "simuser";
+            obe.username = user.getUsername();
 
             if (wallet.canFulfillOrder(obe))
             {
                 std::cout << "Wallet looks good. " << std::endl;
                 orderBook.insertOrder(obe);
+                transactionLogger.log(currentTime, obe.price, obe.amount, obe.product, "bid");
             }
             else {
                 std::cout << "Wallet has insufficient funds . " << std::endl;
@@ -172,12 +179,12 @@ void MerkelMain::gotoNextTimeframe()
     for (std::string p : orderBook.getKnownProducts())
     {
         std::cout << "matching " << p << std::endl;
-        std::vector<OrderBookEntry> sales =  orderBook.matchAsksToBids(p, currentTime);
+        std::vector<OrderBookEntry> sales =  orderBook.matchAsksToBids(p, currentTime, user);
         std::cout << "Sales: " << sales.size() << std::endl;
         for (OrderBookEntry& sale : sales)
         {
             std::cout << "Sale price: " << sale.price << " amount " << sale.amount << std::endl; 
-            if (sale.username == "simuser")
+            if (sale.username == user.getUsername())
             {
                 // update the wallet
                 wallet.processSale(sale);
@@ -187,13 +194,68 @@ void MerkelMain::gotoNextTimeframe()
     }
 
     currentTime = orderBook.getNextTime(currentTime);
+    wallet.saveToCSV();
+}
+
+void MerkelMain::depositFunds()
+{
+    std::string currency;
+    double amount;
+
+    std::cout << "Enter deposit (currency amount), e.g. BTC 5" << std::endl;
+    std::cin >> currency >> amount;
+    std::cin.ignore();
+
+    if (wallet.deposit(currency, amount))
+    {
+        std::cout << "Deposit successful." << std::endl;
+
+        transactionLogger.log(
+            currentTime,
+            0.0,                // no price for deposit
+            amount,
+            currency,
+            "deposit"
+        );
+    }
+    else
+    {
+        std::cout << "Deposit failed." << std::endl;
+    }
+}
+
+void MerkelMain::withdrawFunds()
+{
+    std::string currency;
+    double amount;
+
+    std::cout << "Enter withdrawal (currency amount), e.g. USDT 1000" << std::endl;
+    std::cin >> currency >> amount;
+    std::cin.ignore();
+
+    if (wallet.withdraw(currency, amount))
+    {
+        std::cout << "Withdrawal successful." << std::endl;
+
+        transactionLogger.log(
+            currentTime,
+            0.0,
+            amount,
+            currency,
+            "withdraw"
+        );
+    }
+    else
+    {
+        std::cout << "Insufficient balance or invalid amount." << std::endl;
+    }
 }
  
 int MerkelMain::getUserOption()
 {
     int userOption = 0;
     std::string line;
-    std::cout << "Type in 1-7" << std::endl;
+    std::cout << "Type in 1-9" << std::endl;
     std::getline(std::cin, line);
     try{
         userOption = std::stoi(line);
@@ -237,6 +299,15 @@ void MerkelMain::processUserOption(int userOption)
     }   
     if (userOption == 7) 
     {
-        gotoNextTimeframe();
+        depositFunds();
     }       
+    if (userOption == 8)
+    {
+        withdrawFunds();
+    }
+    if (userOption == 9)
+    {
+        gotoNextTimeframe();
+    }
+
 }

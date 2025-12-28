@@ -1,11 +1,76 @@
 #include "Wallet.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include "CSVReader.h"
+#include "TransactionLogger.h"
 
-Wallet::Wallet()
+Wallet::Wallet(const std::string& username)
+    : username(username)
 {
+    loadFromCSV();
+}
 
+void Wallet::loadFromCSV()
+{
+    currencies.clear();
 
+    std::ifstream file("wallet.csv");
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        if (line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string user, currency, balanceStr;
+
+        std::getline(ss, user, ',');
+        std::getline(ss, currency, ',');
+        std::getline(ss, balanceStr, ',');
+
+        if (user == username)
+        {
+            currencies[currency] = std::stod(balanceStr);
+        }
+    }
+
+    if (currencies.empty())
+    {
+        insertCurrency("BTC", 10);
+        saveToCSV();
+    }
+}
+
+void Wallet::saveToCSV()
+{
+    std::ifstream file("wallet.csv");
+    std::vector<std::string> lines;
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        if (!line.empty())
+            lines.push_back(line);
+    }
+    file.close();
+
+    std::ofstream out("wallet.csv", std::ios::trunc);
+
+    // Write back other users
+    for (const std::string& l : lines)
+    {
+        if (l.substr(0, username.size()) != username)
+            out << l << std::endl;
+    }
+
+    // Write this user's wallet
+    for (const auto& [currency, balance] : currencies)
+    {
+        out << username << ","
+            << currency << ","
+            << balance << std::endl;
+    }
 }
 
 void Wallet::insertCurrency(std::string type, double amount)
@@ -47,6 +112,23 @@ bool Wallet::removeCurrency(std::string type, double amount)
         else // they have it but not enough.
             return false; 
     }
+}
+
+bool Wallet::deposit(std::string currency, double amount)
+{
+    if (amount <= 0)
+        return false;
+
+    insertCurrency(currency, amount);
+    return true;
+}
+
+bool Wallet::withdraw(std::string currency, double amount)
+{
+    if (amount <= 0)
+        return false;
+
+    return removeCurrency(currency, amount);
 }
 
 bool Wallet::containsCurrency(std::string type, double amount)
@@ -102,6 +184,8 @@ void Wallet::processSale(OrderBookEntry& sale)
     // ask
     if (sale.orderType == OrderBookType::asksale)
     {
+        TransactionLogger logger(sale.username);
+
         double outgoingAmount = sale.amount;
         std::string outgoingCurrency = currs[0];
         double incomingAmount = sale.amount * sale.price;
@@ -110,10 +194,13 @@ void Wallet::processSale(OrderBookEntry& sale)
         currencies[incomingCurrency] += incomingAmount;
         currencies[outgoingCurrency] -= outgoingAmount;
 
+        logger.log(sale.timestamp, sale.price, sale.amount, sale.product, "asksale");
     }
     // bid
     if (sale.orderType == OrderBookType::bidsale)
     {
+        TransactionLogger logger(sale.username);
+
         double incomingAmount = sale.amount;
         std::string incomingCurrency = currs[0];
         double outgoingAmount = sale.amount * sale.price;
@@ -121,6 +208,8 @@ void Wallet::processSale(OrderBookEntry& sale)
 
         currencies[incomingCurrency] += incomingAmount;
         currencies[outgoingCurrency] -= outgoingAmount;
+
+        logger.log(sale.timestamp, sale.price, sale.amount, sale.product, "bidsale");
     }
 }
 std::ostream& operator<<(std::ostream& os,  Wallet& wallet)

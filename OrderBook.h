@@ -1,6 +1,7 @@
 #pragma once
 #include "OrderBookEntry.h"
 #include "CSVReader.h"
+#include "User.h"
 #include <string>
 #include <vector>
 
@@ -26,7 +27,7 @@ class OrderBook
 
         void insertOrder(OrderBookEntry& order);
 
-        std::vector<OrderBookEntry> matchAsksToBids(std::string product, std::string timestamp);
+        std::vector<OrderBookEntry> matchAsksToBids(std::string product, std::string timestamp, User& user);
 
         static double getHighPrice(std::vector<OrderBookEntry>& orders);
         static double getLowPrice(std::vector<OrderBookEntry>& orders);

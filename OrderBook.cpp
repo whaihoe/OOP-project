@@ -1,5 +1,6 @@
 #include "OrderBook.h"
 #include "CSVReader.h"
+#include "User.h"
 #include <map>
 #include <algorithm>
 #include <iostream>
@@ -100,7 +101,7 @@ void OrderBook::insertOrder(OrderBookEntry& order)
     std::sort(orders.begin(), orders.end(), OrderBookEntry::compareByTimestamp);
 }
 
-std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std::string timestamp)
+std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std::string timestamp, User& user)
 {
 // asks = orderbook.asks
     std::vector<OrderBookEntry> asks = getOrders(OrderBookType::ask, 
@@ -146,14 +147,14 @@ std::vector<OrderBookEntry> OrderBook::matchAsksToBids(std::string product, std:
                 product, 
                 OrderBookType::asksale};
 
-                if (bid.username == "simuser")
+                if (bid.username == user.getUsername())
                 {
-                    sale.username = "simuser";
+                    sale.username = user.getUsername();
                     sale.orderType = OrderBookType::bidsale;
                 }
-                if (ask.username == "simuser")
+                if (ask.username == user.getUsername())
                 {
-                    sale.username = "simuser";
+                    sale.username = user.getUsername();
                     sale.orderType =  OrderBookType::asksale;
                 }
             

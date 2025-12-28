@@ -5,6 +5,7 @@
 #include "OrderBook.h"
 #include "Wallet.h"
 #include "User.h"
+#include "TransactionLogger.h"
 
 
 class MerkelMain
@@ -15,6 +16,7 @@ class MerkelMain
         void init();
     private: 
         User& user; 
+        TransactionLogger transactionLogger;
         void printMenu();
         void printHelp();
         void printMarketStats();
@@ -22,6 +24,8 @@ class MerkelMain
         void enterBid();
         void printWallet();
         void gotoNextTimeframe();
+        void depositFunds();
+        void withdrawFunds();
         int getUserOption();
         void processUserOption(int userOption);
 
