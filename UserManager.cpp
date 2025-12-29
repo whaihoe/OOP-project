@@ -42,18 +42,25 @@ void UserManager::saveUser(const User& user)
 
 User* UserManager::login(const std::string& username, const std::string& password)
 {
-     size_t inputHash = hashPassword(password);
+    if (username.empty() || password.empty())
+    {
+        std::cout << "Invalid input: username or password is empty." << std::endl;
+        return nullptr;
+    }
+
+    size_t inputHash = hashPassword(password);
 
     for (auto& user : users)
     {
         if (user.getUsername() == username &&
             user.getPasswordHash() == inputHash)
         {
-            // saves to currentUser
             currentUser = &user;
             return currentUser;
         }
     }
+
+    std::cout << "Invalid username or password." << std::endl;
     return nullptr;
 }
 
@@ -68,7 +75,20 @@ bool UserManager::registerUser(
     const std::string& password
 )
 {
-    if (userExists(fullName, email)) {
+    if (fullName.empty() || email.empty() || password.empty())
+    {
+        std::cout << "Invalid input: all fields are required." << std::endl;
+        return false;
+    }
+
+    if (password.length() < 6)
+    {
+        std::cout << "Password must be at least 6 characters." << std::endl;
+        return false;
+    }
+
+    if (userExists(fullName, email))
+    {
         std::cout << "User already registered." << std::endl;
         return false;
     }
@@ -80,9 +100,8 @@ bool UserManager::registerUser(
     users.push_back(user);
     saveUser(user);
 
-    std::cout << "Account successfully created!" << std::endl ;
+    std::cout << "Account successfully created!" << std::endl;
     std::cout << "Your generated username is: " << username << std::endl;
-    std::cout << "Please keep it safe for login." << std::endl;
 
     return true;
 }
@@ -158,16 +177,31 @@ bool UserManager::resetPassword()
 
     std::cout << std::endl << "Confirm new password: ";
     while (std::cin.get(ch) && ch != '\n') {
-        if (ch == 127 || ch == 8) { // Handle backspace
-            if (!newPassword.empty()) {
-                newPassword.pop_back();
+        if (ch == 127 || ch == 8) {
+            if (!confirmPassword.empty()) {
+                confirmPassword.pop_back();
                 std::cout << "\b \b" << std::flush;
             }
         } else {
-            newPassword.push_back(ch);
+            confirmPassword.push_back(ch);
             std::cout << '*' << std::flush;
         }
     }
+
+    if (username.empty() || email.empty() ||
+        newPassword.empty() || confirmPassword.empty())
+    {
+        std::cout << "Invalid input: fields cannot be empty." << std::endl;
+        return false;
+    }
+
+    if (newPassword != confirmPassword)
+    {
+        std::cout << "Passwords do not match." << std::endl;
+        return false;
+    }
+
+
 
     // Restore terminal settings
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
@@ -228,22 +262,49 @@ void UserManager::showAuthMenu()
         std::cout << "0. Exit" << std::endl;
         std::cout << "Choice: ";
 
+        std::string input;
+        std::getline(std::cin, input);
+
+        // Check if input is empty
+        if (input.empty()) {
+            std::cout << "Invalid input! Please enter a number 0-3." << std::endl;
+            continue;
+        }
+
+        // Try converting to int
         int choice;
-        std::cin >> choice;
-        std::cin.ignore();
+        try {
+            choice = std::stoi(input); // throws if not a valid integer
+        } catch (...) {
+            std::cout << "Invalid input! Please enter a number 0-3." << std::endl;
+            continue;
+        }
+
+        // Check range
+        if (choice < 0 || choice > 3) {
+            std::cout << "Invalid choice! Please enter a number 0-3." << std::endl;
+            continue;
+        }
 
         if (choice == 1)
         {
             std::string name, email, password;
             std::cout << "Full name: ";
             std::getline(std::cin, name);
+            if (name.empty()) {
+                std::cout << "Name cannot be empty!" << std::endl;
+                continue;
+            }
+
             std::cout << "Email: ";
             std::getline(std::cin, email);
+            if (email.empty() || email.find('@') == std::string::npos) {
+                std::cout << "Invalid email!" << std::endl;
+                continue;
+            }
 
-            // For password censor
+            // Password input with masking
             char ch;
-    
-            // Disable terminal echo
             termios oldt;
             tcgetattr(STDIN_FILENO, &oldt);
             termios newt = oldt;
@@ -251,8 +312,9 @@ void UserManager::showAuthMenu()
             tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
             std::cout << "Password: ";
+            password.clear();
             while (std::cin.get(ch) && ch != '\n') {
-                if (ch == 127 || ch == 8) { // Handle backspace
+                if (ch == 127 || ch == 8) {
                     if (!password.empty()) {
                         password.pop_back();
                         std::cout << "\b \b" << std::flush;
@@ -262,26 +324,27 @@ void UserManager::showAuthMenu()
                     std::cout << '*' << std::flush;
                 }
             }
-
-            // Restore terminal settings
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
             std::cout << std::endl;
 
-            // std::cout << "Password: ";
-            // std::getline(std::cin, password);
+            if (password.empty()) {
+                std::cout << "Password cannot be empty!" << std::endl;
+                continue;
+            }
 
             registerUser(name, email, password);
         }
-
         else if (choice == 2)
         {
             std::string username, password;
             std::cout << "Username: ";
             std::getline(std::cin, username);
-            // For password censor
+            if (username.empty()) {
+                std::cout << "Username cannot be empty!" << std::endl;
+                continue;
+            }
+
             char ch;
-    
-            // Disable terminal echo
             termios oldt;
             tcgetattr(STDIN_FILENO, &oldt);
             termios newt = oldt;
@@ -289,8 +352,9 @@ void UserManager::showAuthMenu()
             tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
             std::cout << "Password: ";
+            password.clear();
             while (std::cin.get(ch) && ch != '\n') {
-                if (ch == 127 || ch == 8) { // Handle backspace
+                if (ch == 127 || ch == 8) {
                     if (!password.empty()) {
                         password.pop_back();
                         std::cout << "\b \b" << std::flush;
@@ -300,10 +364,13 @@ void UserManager::showAuthMenu()
                     std::cout << '*' << std::flush;
                 }
             }
-            
-            // Restore terminal settings
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
             std::cout << std::endl;
+
+            if (password.empty()) {
+                std::cout << "Password cannot be empty!" << std::endl;
+                continue;
+            }
 
             if (!login(username, password))
                 std::cout << "Invalid credentials." << std::endl;
@@ -315,6 +382,10 @@ void UserManager::showAuthMenu()
         else if (choice == 0)
         {
             std::exit(0);
+        }
+        else
+        {
+            std::cout << "Invalid choice! Please enter 0-3." << std::endl;
         }
     }
 }

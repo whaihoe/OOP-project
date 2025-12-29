@@ -20,6 +20,7 @@ class MerkelMain
         void printMenu();
         void printHelp();
         void printMarketStats();
+        void generateBidsAndAsks();
         void enterAsk();
         void enterBid();
         void printWallet();

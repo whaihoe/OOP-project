@@ -16,6 +16,8 @@ public:
         const std::string& orderType
     );
 
+    static std::string getLastTransactionTime(const std::string& username);
+
 private:
     std::string filename;
 };

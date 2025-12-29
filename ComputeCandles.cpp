@@ -19,7 +19,7 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
     while (ss >> word) words.push_back(word);
 
     if (words.size() < 3) {
-        std::cout << "Invalid input!" << std::endl;
+        std::cout << "Invalid input! Format: <type> <pair> <timeframe>" << std::endl;
         return {};
     }
 
@@ -27,27 +27,36 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
     std::string symbol    = words[1];
     std::string timeframe = words[2];
 
+    // Convert trading pair to lowercase for consistency
+    std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::tolower);
+
+    // Basic validation of symbol
+    if (symbol.empty() || symbol.find('/') == std::string::npos) {
+        std::cout << "Invalid trading pair!" << std::endl;
+        return {};
+    }
+
+    // Read CSV orders
     auto orders = CSVReader::readCSV("20200601.csv");
     OrderBookType type = OrderBookEntry::stringToOrderBookType(inputType);
 
-    // get current time
     DateTime simulatedNow = DateTime::fromString(CurrentTime);
 
-    // Map with string key (bucketed datetime) -> {open, high, low, close}
     std::map<std::string, std::vector<double>> buckets;
 
     for (const OrderBookEntry& entry : orders)
     {
-        if (entry.product == symbol && entry.orderType == type)
+        // Compare lowercase for consistency
+        std::string entrySymbol = entry.product;
+        std::transform(entrySymbol.begin(), entrySymbol.end(), entrySymbol.begin(), ::tolower);
+
+        if (entrySymbol == symbol && entry.orderType == type)
         {
             DateTime dt = DateTime::fromString(entry.timestamp);
-
-            // To skip the timeframes after current timestamp
             if (dt.isAfter(simulatedNow)) continue;
 
             DateTime bucket = dt.toBucket(timeframe);
             std::string key = bucket.toString();
-
             double price = entry.price;
 
             if (buckets.find(key) == buckets.end()) {
@@ -61,19 +70,12 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
         }
     }
 
-    // Convert to final vector of Candlesticks
     std::vector<Candlestick> result;
     for (auto& kv : buckets) {
         const std::string& key = kv.first;
         std::vector<double>& candle = kv.second;
-        
-        result.emplace_back(
-            key,        // date as string
-            candle[0],  // open
-            candle[1],  // high
-            candle[2],  // low
-            candle[3]   // close
-        );
+
+        result.emplace_back(key, candle[0], candle[1], candle[2], candle[3]);
     }
 
     // Print

@@ -72,6 +72,32 @@ double OrderBook::getLowPrice(std::vector<OrderBookEntry>& orders)
     return min;
 }
 
+double OrderBook::getMaxAskPrice(const std::string& product, const std::string& timestamp)
+{
+    std::vector<OrderBookEntry> asks = getOrders(OrderBookType::ask, product, timestamp);
+    if (asks.empty()) return -1; // no asks available
+
+    double maxAsk = asks[0].price;
+    for (const auto& e : asks)
+    {
+        if (e.price > maxAsk) maxAsk = e.price;
+    }
+    return maxAsk;
+}
+
+double OrderBook::getMinBidPrice(const std::string& product, const std::string& timestamp)
+{
+    std::vector<OrderBookEntry> bids = getOrders(OrderBookType::bid, product, timestamp);
+    if (bids.empty()) return -1; // no bids available
+
+    double minBid = bids[0].price;
+    for (const auto& e : bids)
+    {
+        if (e.price < minBid) minBid = e.price;
+    }
+    return minBid;
+}
+
 std::string OrderBook::getEarliestTime()
 {
     return orders[0].timestamp;

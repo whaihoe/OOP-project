@@ -20,12 +20,13 @@ public:
     bool withdraw(std::string currency, double amount);
 
     bool containsCurrency(std::string type, double amount);
+    double getAmount(const std::string& currency) const;
     bool canFulfillOrder(OrderBookEntry order);
     void processSale(OrderBookEntry& sale);
 
     std::string toString();
 
 private:
-    std::string username; // 🔑 foreign key
+    std::string username; // foreign key
     std::map<std::string,double> currencies;
 };

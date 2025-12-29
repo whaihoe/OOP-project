@@ -116,8 +116,23 @@ bool Wallet::removeCurrency(std::string type, double amount)
 
 bool Wallet::deposit(std::string currency, double amount)
 {
-    if (amount <= 0)
+    if (currency.empty())
+    {
+        std::cout << "Invalid input: currency is empty." << std::endl;
         return false;
+    }
+
+    if (currency.find('/') != std::string::npos)
+    {
+        std::cout << "Invalid input: currency must not contain '/'." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0)
+    {
+        std::cout << "Invalid input: deposit amount must be positive." << std::endl;
+        return false;
+    }
 
     insertCurrency(currency, amount);
     return true;
@@ -125,10 +140,31 @@ bool Wallet::deposit(std::string currency, double amount)
 
 bool Wallet::withdraw(std::string currency, double amount)
 {
-    if (amount <= 0)
+    if (currency.empty())
+    {
+        std::cout << "Invalid input: currency is empty." << std::endl;
         return false;
+    }
 
-    return removeCurrency(currency, amount);
+    if (currency.find('/') != std::string::npos)
+    {
+        std::cout << "Invalid input: currency must not contain '/'." << std::endl;
+        return false;
+    }
+
+    if (amount <= 0)
+    {
+        std::cout << "Invalid input: withdrawal amount must be positive." << std::endl;
+        return false;
+    }
+
+    if (!removeCurrency(currency, amount))
+    {
+        std::cout << "Invalid input: insufficient balance." << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool Wallet::containsCurrency(std::string type, double amount)
@@ -150,6 +186,13 @@ std::string Wallet::toString()
         s += currency + " : " + std::to_string(amount) + "\n";
     }
     return s;
+}
+
+double Wallet::getAmount(const std::string& currency) const
+{
+    if (currencies.count(currency) == 0)
+        return 0.0;
+    return currencies.at(currency);
 }
 
 bool Wallet::canFulfillOrder(OrderBookEntry order)

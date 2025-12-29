@@ -17,7 +17,14 @@ MerkelMain::MerkelMain(User& user)
 void MerkelMain::init()
 {
     int input;
-    currentTime = orderBook.getEarliestTime();
+    std::string lastTxTime = TransactionLogger::getLastTransactionTime(user.getUsername());
+    if (!lastTxTime.empty()) {
+        currentTime = lastTxTime;
+        std::cout << "Resuming from last transaction timestamp: " << currentTime << std::endl;
+    } else {
+        currentTime = orderBook.getEarliestTime();
+        std::cout << "No previous transactions, starting from earliest dataset time: " << currentTime << std::endl;
+    }
 
     while(true)
     {
@@ -36,20 +43,22 @@ void MerkelMain::printMenu()
     std::cout << "1: Print help " << std::endl;
     // 2 print exchange stats
     std::cout << "2: Print exchange stats" << std::endl;
-    // 3 make an offer
-    std::cout << "3: Make an offer " << std::endl;
-    // 4 make a bid 
-    std::cout << "4: Make a bid " << std::endl;
-    // 5 print wallet
-    std::cout << "5: Print wallet " << std::endl;
-    // 6 print candlestickdata
-    std::cout << "6: Print candlestick " << std::endl;
-    // 7 deposit into wallet   
-    std::cout << "7: Deposit " << std::endl;
-    // 8 withdraw from wallet
-    std::cout << "8: Withdraw " << std::endl;
-    // 9 continue to next timeframe
-    std::cout << "9: Continue " << std::endl;
+    // 3 generate 5 bids and asks
+    std::cout << "3: Generate bids and asks" << std::endl;
+    // 4 make an offer
+    std::cout << "4: Make an offer " << std::endl;
+    // 5 make a bid 
+    std::cout << "5: Make a bid " << std::endl;
+    // 6 print wallet
+    std::cout << "6: Print wallet " << std::endl;
+    // 7 print candlestickdata
+    std::cout << "7: Print candlestick " << std::endl;
+    // 8 deposit into wallet   
+    std::cout << "8: Deposit " << std::endl;
+    // 9 withdraw from wallet
+    std::cout << "9: Withdraw " << std::endl;
+    // 10 continue to next timeframe
+    std::cout << "10: Continue " << std::endl;
 
     std::cout << "============== " << std::endl;
 
@@ -66,12 +75,18 @@ void MerkelMain::printMarketStats()
     for (std::string const& p : orderBook.getKnownProducts())
     {
         std::cout << "Product: " << p << std::endl;
-        std::vector<OrderBookEntry> entries = orderBook.getOrders(OrderBookType::ask, 
+        std::vector<OrderBookEntry> AskEntries = orderBook.getOrders(OrderBookType::ask, 
                                                                 p, currentTime);
-        std::cout << "Asks seen: " << entries.size() << std::endl;
-        std::cout << "Max ask: " << OrderBook::getHighPrice(entries) << std::endl;
-        std::cout << "Min ask: " << OrderBook::getLowPrice(entries) << std::endl;
-
+        std::cout << "Asks seen: " << AskEntries.size() << std::endl;
+        std::cout << "Max ask: " << OrderBook::getHighPrice(AskEntries) << std::endl;
+        std::cout << "Min ask: " << OrderBook::getLowPrice(AskEntries) << std::endl;
+        
+        // Bids
+        std::vector<OrderBookEntry> BidEntries = orderBook.getOrders(OrderBookType::bid, 
+                                                                p, currentTime);
+        std::cout << "Bids seen: " << BidEntries.size() << std::endl;
+        std::cout << "Max bid: " << OrderBook::getHighPrice(BidEntries) << std::endl;
+        std::cout << "Min bid: " << OrderBook::getLowPrice(BidEntries) << std::endl << std::endl;
 
 
     }
@@ -92,6 +107,99 @@ void MerkelMain::printMarketStats()
     // std::cout << "OrderBook asks:  " << asks << " bids:" << bids << std::endl;
 
 }
+
+
+
+void MerkelMain::generateBidsAndAsks()
+{
+    for (const std::string& product : orderBook.getKnownProducts())
+    {
+        std::vector<std::string> currs = CSVReader::tokenise(product, '/');
+        std::string base = currs[0];
+        std::string quote = currs[1];
+
+        double bestAsk = orderBook.getMinBidPrice(product, currentTime);
+        double bestBid = orderBook.getMaxAskPrice(product, currentTime);
+
+        if (bestAsk <= 0 || bestBid <= 0)
+            continue;
+
+        // --------------------
+        // ASKS (sell base)
+        // --------------------
+        double baseBalance = wallet.getAmount(base);
+        if (baseBalance == 0.0)
+        {
+            wallet.deposit(base, 10);
+            transactionLogger.log(currentTime, 0.0, 10, base, "deposit");
+            std::cout << "Deposited " << base << " 10" << std::endl;
+            baseBalance = 10;
+        }
+
+        // use only 10% of available base for this product
+        double totalAskAmount = baseBalance * 0.10;
+        double askAmountPerOrder = totalAskAmount / 5.0;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (askAmountPerOrder <= 0)
+                break;
+
+            OrderBookEntry ask{
+                bestAsk,
+                askAmountPerOrder,
+                currentTime,
+                product,
+                OrderBookType::ask
+            };
+            ask.username = user.getUsername();
+
+            if (wallet.canFulfillOrder(ask))
+            {
+                orderBook.insertOrder(ask);
+                transactionLogger.log(currentTime, ask.price, ask.amount, product, "ask");
+            }
+        }
+
+        // --------------------
+        // BIDS (buy base using quote)
+        // --------------------
+        double quoteBalance = wallet.getAmount(quote);
+        if (quoteBalance == 0.0)
+        {
+            wallet.deposit(quote, 10);
+            transactionLogger.log(currentTime, 0.0, 10, quote, "deposit");
+            std::cout << "Deposited " << quote << " 10" << std::endl;
+            quoteBalance = 10;
+        }
+
+        // use only 10% of available quote for this product
+        double totalQuoteToSpend = quoteBalance * 0.10;
+        double bidAmountPerOrder = (totalQuoteToSpend / 5.0) / bestBid;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (bidAmountPerOrder <= 0)
+                break;
+
+            OrderBookEntry bid{
+                bestBid,
+                bidAmountPerOrder,
+                currentTime,
+                product,
+                OrderBookType::bid
+            };
+            bid.username = user.getUsername();
+
+            if (wallet.canFulfillOrder(bid))
+            {
+                orderBook.insertOrder(bid);
+                transactionLogger.log(currentTime, bid.price, bid.amount, product, "bid");
+            }
+        }
+    }
+}
+
 
 void MerkelMain::enterAsk()
 {
@@ -271,7 +379,7 @@ void MerkelMain::processUserOption(int userOption)
 {
     if (userOption == 0) // bad input
     {
-        std::cout << "Invalid choice. Choose 1-7" << std::endl;
+        std::cout << "Invalid choice. Choose 1-10" << std::endl;
     }
     if (userOption == 1) 
     {
@@ -283,29 +391,33 @@ void MerkelMain::processUserOption(int userOption)
     }
     if (userOption == 3) 
     {
-        enterAsk();
+        generateBidsAndAsks();
     }
     if (userOption == 4) 
     {
-        enterBid();
+        enterAsk();
     }
     if (userOption == 5) 
     {
-        printWallet();
+        enterBid();
     }
     if (userOption == 6) 
     {
+        printWallet();
+    }
+    if (userOption == 7) 
+    {
         ComputeCandlesticks::GetCandlesticks(currentTime);
     }   
-    if (userOption == 7) 
+    if (userOption == 8) 
     {
         depositFunds();
     }       
-    if (userOption == 8)
+    if (userOption == 9)
     {
         withdrawFunds();
     }
-    if (userOption == 9)
+    if (userOption == 10)
     {
         gotoNextTimeframe();
     }
