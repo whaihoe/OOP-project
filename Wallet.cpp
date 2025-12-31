@@ -116,18 +116,6 @@ bool Wallet::removeCurrency(std::string type, double amount)
 
 bool Wallet::deposit(std::string currency, double amount)
 {
-    if (currency.empty())
-    {
-        std::cout << "Invalid input: currency is empty." << std::endl;
-        return false;
-    }
-
-    if (currency.find('/') != std::string::npos)
-    {
-        std::cout << "Invalid input: currency must not contain '/'." << std::endl;
-        return false;
-    }
-
     if (amount <= 0)
     {
         std::cout << "Invalid input: deposit amount must be positive." << std::endl;
@@ -140,18 +128,6 @@ bool Wallet::deposit(std::string currency, double amount)
 
 bool Wallet::withdraw(std::string currency, double amount)
 {
-    if (currency.empty())
-    {
-        std::cout << "Invalid input: currency is empty." << std::endl;
-        return false;
-    }
-
-    if (currency.find('/') != std::string::npos)
-    {
-        std::cout << "Invalid input: currency must not contain '/'." << std::endl;
-        return false;
-    }
-
     if (amount <= 0)
     {
         std::cout << "Invalid input: withdrawal amount must be positive." << std::endl;
@@ -260,4 +236,3 @@ std::ostream& operator<<(std::ostream& os,  Wallet& wallet)
     os << wallet.toString();
     return os;
 }
-

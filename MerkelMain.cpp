@@ -1,9 +1,11 @@
 #include "MerkelMain.h"
 #include <iostream>
 #include <vector>
+#include <sstream>
 #include "OrderBookEntry.h"
 #include "CSVReader.h"
 #include "ComputeCandles.h"
+#include "DateTime.h"
 
 MerkelMain::MerkelMain(User& user)
     : user(user),
@@ -26,13 +28,15 @@ void MerkelMain::init()
         std::cout << "No previous transactions, starting from earliest dataset time: " << currentTime << std::endl;
     }
 
-    while(true)
+    bool running = true;
+
+    while(running)
     {
         std::cout << std::endl << "==== Welcome, " << user.getFullName() << " ===="<< std::endl;
 
         printMenu();
         input = getUserOption();
-        processUserOption(input);
+        running = processUserOption(input); // returns false if userOption == 0
     }
 }
 
@@ -54,9 +58,9 @@ void MerkelMain::printMenu()
     // 7 print candlestickdata
     std::cout << "7: Print candlestick " << std::endl;
     // 8 deposit into wallet   
-    std::cout << "8: Deposit " << std::endl;
+    std::cout << "8: Deposit / withdraw " << std::endl;
     // 9 withdraw from wallet
-    std::cout << "9: Withdraw " << std::endl;
+    std::cout << "9: Print user summary " << std::endl;
     // 10 continue to next timeframe
     std::cout << "10: Continue " << std::endl;
 
@@ -305,57 +309,178 @@ void MerkelMain::gotoNextTimeframe()
     wallet.saveToCSV();
 }
 
-void MerkelMain::depositFunds()
+void MerkelMain::modifyFunds()
 {
-    std::string currency;
-    double amount;
-
-    std::cout << "Enter deposit (currency amount), e.g. BTC 5" << std::endl;
-    std::cin >> currency >> amount;
-    std::cin.ignore();
-
-    if (wallet.deposit(currency, amount))
+    // Create a list of valid currencies
+    std::vector<std::string> validCurrencies;
+    for (const std::string& product : orderBook.getKnownProducts())
     {
-        std::cout << "Deposit successful." << std::endl;
+        std::vector<std::string> currs = CSVReader::tokenise(product, '/');
+        std::string base = currs[0];
+        std::string quote = currs[1];
 
-        transactionLogger.log(
-            currentTime,
-            0.0,                // no price for deposit
-            amount,
-            currency,
-            "deposit"
-        );
+        // Add base currency if not already in the list
+        if (std::find(validCurrencies.begin(), validCurrencies.end(), base) == validCurrencies.end())
+            validCurrencies.push_back(base);
+
+        // Add quote currency if not already in the list
+        if (std::find(validCurrencies.begin(), validCurrencies.end(), quote) == validCurrencies.end())
+            validCurrencies.push_back(quote);
+    }
+
+    // Get user input
+    std::string input;
+    std::cout << "Enter transaction (e.g. deposit BTC 5 or withdraw USDT 100): " << std::endl;
+    std::getline(std::cin, input);
+
+    std::stringstream ss(input);
+    std::string action, currency;
+    double amount;
+    ss >> action >> currency >> amount;
+
+    // Convert action to lowercase
+    std::transform(action.begin(), action.end(), action.begin(), ::tolower);
+
+    // Convert currency to upper
+    std::transform(currency.begin(), currency.end(), currency.begin(), ::toupper);
+
+    // Step 3: Validate currency
+    if (std::find(validCurrencies.begin(), validCurrencies.end(), currency) == validCurrencies.end())
+    {
+        std::cout << "Invalid currency. Valid options are: ";
+        for (const auto& c : validCurrencies) std::cout << c << " ";
+        std::cout << std::endl;
+        return;
+    }
+
+    // Step 4: Perform deposit or withdrawal
+    if (action == "deposit")
+    {
+        if (wallet.deposit(currency, amount))
+        {
+            std::cout << "Deposit successful." << std::endl;
+            transactionLogger.log(currentTime, 0.0, amount, currency, "deposit");
+        }
+        else
+        {
+            std::cout << "Deposit failed." << std::endl;
+        }
+    }
+    else if (action == "withdraw")
+    {
+        if (wallet.withdraw(currency, amount))
+        {
+            std::cout << "Withdrawal successful." << std::endl;
+            transactionLogger.log(currentTime, 0.0, amount, currency, "withdraw");
+        }
+        else
+        {
+            std::cout << "Insufficient balance or invalid amount." << std::endl;
+        }
     }
     else
     {
-        std::cout << "Deposit failed." << std::endl;
+        std::cout << "Invalid action. Use 'deposit' or 'withdraw'." << std::endl;
     }
 }
 
-void MerkelMain::withdrawFunds()
+void MerkelMain::printSummary()
 {
-    std::string currency;
-    double amount;
+    std::string choice;
+    std::cout << "Choose option:\n";
+    std::cout << "1: Summary statistics\n";
+    std::cout << "2: View recent transactions\n";
+    std::getline(std::cin, choice);
 
-    std::cout << "Enter withdrawal (currency amount), e.g. USDT 1000" << std::endl;
-    std::cin >> currency >> amount;
-    std::cin.ignore();
-
-    if (wallet.withdraw(currency, amount))
+    if (choice == "1")
     {
-        std::cout << "Withdrawal successful." << std::endl;
+        std::string input;
+        std::cout << "Enter product (or ALL), start time, end time (comma separated):" << std::endl;
+        std::cout << "Example: BTC/USDT,2020/06/01 10:00:00" << std::endl;
+        std::getline(std::cin, input);
 
-        transactionLogger.log(
-            currentTime,
-            0.0,
-            amount,
-            currency,
-            "withdraw"
-        );
+        std::stringstream ss(input);
+        std::string product, startTime;
+
+        std::getline(ss, product, ',');
+        std::getline(ss, startTime, ',');
+
+        // List of known products
+        std::vector<std::string> knownProducts = orderBook.getKnownProducts();
+        std::transform(product.begin(), product.end(), product.begin(), ::toupper);
+
+        // Validating input
+        if (std::find(knownProducts.begin(), knownProducts.end(), product) != knownProducts.end() || product == "ALL") 
+        {
+            if (DateTime::isValidFormat(startTime))
+            {
+                if (product == "ALL")
+                {
+                    product = "";
+                }
+
+                transactionLogger.computeSummary(product, startTime);
+            }
+            else
+            {
+                std::cout << "Enter a valid start time." << std::endl;
+            }
+        } 
+        else
+        {
+            std::cout << "Enter a valid product." << std::endl;
+        }
+    }
+    else if (choice == "2")
+    {
+        std::string product;
+        std::cout << "Enter product to filter (or ALL for last 5 transactions): ";
+        std::getline(std::cin, product);
+
+        std::transform(product.begin(), product.end(), product.begin(), ::toupper);
+
+        // List of valid currencies
+        std::vector<std::string> validCurrencies;
+        for (const std::string& prod : orderBook.getKnownProducts())
+        {
+            std::vector<std::string> currs = CSVReader::tokenise(prod, '/');
+            std::string base = currs[0];
+            std::string quote = currs[1];
+
+            if (std::find(validCurrencies.begin(), validCurrencies.end(), base) == validCurrencies.end())
+                validCurrencies.push_back(base);
+
+            if (std::find(validCurrencies.begin(), validCurrencies.end(), quote) == validCurrencies.end())
+                validCurrencies.push_back(quote);
+        }
+
+        // List of known products
+        std::vector<std::string> knownProducts = orderBook.getKnownProducts();
+
+        if (product == "ALL")
+        {
+            product = "";
+            transactionLogger.printRecentTransactions(5, product);
+        }
+        else
+        {
+            // Validate input
+            bool isValidProduct = std::find(knownProducts.begin(), knownProducts.end(), product) != knownProducts.end();
+            bool isValidCurrency = std::find(validCurrencies.begin(), validCurrencies.end(), product) != validCurrencies.end();
+
+            if (isValidProduct || isValidCurrency) 
+            {
+                transactionLogger.printRecentTransactions(5, product);
+            }
+            else
+            {
+                std::cout << "Invalid product or currency. Please try again." << std::endl;
+            }
+        }
     }
     else
     {
-        std::cout << "Insufficient balance or invalid amount." << std::endl;
+        std::cout << "Invalid option." << std::endl;
     }
 }
  
@@ -363,7 +488,7 @@ int MerkelMain::getUserOption()
 {
     int userOption = 0;
     std::string line;
-    std::cout << "Type in 1-9" << std::endl;
+    std::cout << "Type in 1-10" << std::endl;
     std::getline(std::cin, line);
     try{
         userOption = std::stoi(line);
@@ -375,11 +500,12 @@ int MerkelMain::getUserOption()
     return userOption;
 }
 
-void MerkelMain::processUserOption(int userOption)
+bool MerkelMain::processUserOption(int userOption)
 {
-    if (userOption == 0) // bad input
+    if (userOption == 0)
     {
-        std::cout << "Invalid choice. Choose 1-10" << std::endl;
+        std::cout << "See you again " << user.getFullName() << "."<< std::endl;
+        return false; // signal to exit loop
     }
     if (userOption == 1) 
     {
@@ -411,15 +537,21 @@ void MerkelMain::processUserOption(int userOption)
     }   
     if (userOption == 8) 
     {
-        depositFunds();
+        modifyFunds();
     }       
     if (userOption == 9)
     {
-        withdrawFunds();
+        printSummary();
     }
     if (userOption == 10)
     {
         gotoNextTimeframe();
     }
+    // for other options than the one listed
+    else if (userOption > 10)
+    {
+        std::cout << "Invalid option choose 1-10 or 0 to exit. " << std::endl;
+    }
 
+    return true;
 }

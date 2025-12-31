@@ -21,4 +21,6 @@ struct DateTime
     DateTime toBucket(const std::string& timeframe) const;
 
     bool isAfter(const DateTime& other) const;
+
+    static bool isValidFormat(const std::string& timestamp);
 };

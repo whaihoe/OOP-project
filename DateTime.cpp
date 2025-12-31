@@ -80,6 +80,32 @@ bool DateTime::isAfter(const DateTime& other) const
     return second > other.second;
 }
 
+bool DateTime::isValidFormat(const std::string& timestamp) {
+    // Expected format: "YYYY/MM/DD HH:MM:SS"
+    if (timestamp.length() != 19) return false;
+
+    // Check digits and separators
+    for (int i = 0; i < 19; ++i) {
+        if (i == 4 || i == 7) 
+        {
+            if (timestamp[i] != '/') return false;
+        } 
+        else if (i == 10) 
+        {
+            if (timestamp[i] != ' ') return false;
+        } 
+        else if (i == 13 || i == 16) 
+        {
+            if (timestamp[i] != ':') return false;
+        }
+        else 
+        {
+            if (!isdigit(timestamp[i])) return false;
+        }
+    }
+
+    return true;
+}
 
 // int main(){
 

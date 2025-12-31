@@ -17,6 +17,8 @@ public:
     );
 
     static std::string getLastTransactionTime(const std::string& username);
+    void computeSummary(const std::string& productFilter, const std::string& startTime);
+    void printRecentTransactions(int limit, const std::string& productFilter);
 
 private:
     std::string filename;

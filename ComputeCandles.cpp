@@ -1,6 +1,7 @@
 #include "ComputeCandles.h"
 #include "MerkelMain.h"
 #include "DateTime.h"
+#include "OrderBook.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -9,6 +10,7 @@ ComputeCandlesticks::ComputeCandlesticks() {}
 
 std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string& CurrentTime)
 {
+    // input
     std::cout << "Enter a pair e.g. bid BTC/USDT 1h" << std::endl;
     std::string line;
     std::getline(std::cin, line);
@@ -27,18 +29,48 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
     std::string symbol    = words[1];
     std::string timeframe = words[2];
 
-    // Convert trading pair to lowercase for consistency
-    std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::tolower);
+    // Validation of type
+    std::transform(inputType.begin(), inputType.end(), inputType.begin(), ::tolower);
+    OrderBookType type;
+    if (inputType == "bid" || inputType == "ask"){
+        OrderBookType type = OrderBookEntry::stringToOrderBookType(inputType);
+    }else{
+         std::cout << "Invalid type! Enter only bid or ask." << std::endl;
+        return {};
+    }
+
 
     // Basic validation of symbol
-    if (symbol.empty() || symbol.find('/') == std::string::npos) {
-        std::cout << "Invalid trading pair!" << std::endl;
+    OrderBook orderBook{"20200601.csv"};
+    bool validSymbol = false;
+
+    // convert to upper to compare
+    std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
+    for (std::string const& p : orderBook.getKnownProducts()){
+        if (symbol == p) {
+            validSymbol = true;
+            break;
+        }
+    }
+    if (!validSymbol) {
+        std::cout << "Invalid trading pair! Not found in known products." << std::endl;
+        return {};
+    }
+    const std::vector<std::string> allowedTimeframes = {"1m", "5m", "1h", "1d", "1M", "1Y"};
+    bool validTimeframe = false;
+    for (const auto& tf : allowedTimeframes) {
+        if (timeframe == tf) {
+            validTimeframe = true;
+            break;
+        }
+    }
+    if (!validTimeframe) {
+        std::cout << "Invalid timeframe! Allowed values are: 1m, 5m, 1h, 1d, 1M, 1Y (case sensitive)." << std::endl;
         return {};
     }
 
     // Read CSV orders
     auto orders = CSVReader::readCSV("20200601.csv");
-    OrderBookType type = OrderBookEntry::stringToOrderBookType(inputType);
 
     DateTime simulatedNow = DateTime::fromString(CurrentTime);
 
@@ -46,9 +78,9 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
 
     for (const OrderBookEntry& entry : orders)
     {
-        // Compare lowercase for consistency
+        // Compare uppercase for consistency
         std::string entrySymbol = entry.product;
-        std::transform(entrySymbol.begin(), entrySymbol.end(), entrySymbol.begin(), ::tolower);
+        std::transform(entrySymbol.begin(), entrySymbol.end(), entrySymbol.begin(), ::toupper);
 
         if (entrySymbol == symbol && entry.orderType == type)
         {

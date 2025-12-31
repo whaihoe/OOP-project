@@ -25,10 +25,10 @@ class MerkelMain
         void enterBid();
         void printWallet();
         void gotoNextTimeframe();
-        void depositFunds();
-        void withdrawFunds();
+        void modifyFunds();
+        void printSummary();
         int getUserOption();
-        void processUserOption(int userOption);
+        bool processUserOption(int userOption);
 
         std::string currentTime;
 
