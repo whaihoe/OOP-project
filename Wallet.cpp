@@ -11,6 +11,7 @@ Wallet::Wallet(const std::string& username)
     loadFromCSV();
 }
 
+// To load wallet data from CSV file for Task 2
 void Wallet::loadFromCSV()
 {
     currencies.clear();
@@ -42,6 +43,7 @@ void Wallet::loadFromCSV()
     }
 }
 
+// To save wallet data to CSV file for Task 2 and 3
 void Wallet::saveToCSV()
 {
     std::ifstream file("wallet.csv");
@@ -114,6 +116,7 @@ bool Wallet::removeCurrency(std::string type, double amount)
     }
 }
 
+// Deposit function for Task 3
 bool Wallet::deposit(std::string currency, double amount)
 {
     if (amount <= 0)
@@ -126,6 +129,7 @@ bool Wallet::deposit(std::string currency, double amount)
     return true;
 }
 
+// Withdraw function for Task 3
 bool Wallet::withdraw(std::string currency, double amount)
 {
     if (amount <= 0)
@@ -213,6 +217,7 @@ void Wallet::processSale(OrderBookEntry& sale)
         currencies[incomingCurrency] += incomingAmount;
         currencies[outgoingCurrency] -= outgoingAmount;
 
+        // To log transaction as asksale in transactionlogger
         logger.log(sale.timestamp, sale.price, sale.amount, sale.product, "asksale");
     }
     // bid
@@ -228,6 +233,7 @@ void Wallet::processSale(OrderBookEntry& sale)
         currencies[incomingCurrency] += incomingAmount;
         currencies[outgoingCurrency] -= outgoingAmount;
 
+        // To log transaction as asksale in transactionlogger
         logger.log(sale.timestamp, sale.price, sale.amount, sale.product, "bidsale");
     }
 }

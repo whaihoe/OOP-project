@@ -1,3 +1,5 @@
+// To log transactions for Task 3
+
 #include "TransactionLogger.h"
 #include <fstream>
 #include <sstream>
@@ -17,6 +19,7 @@ TransactionLogger::TransactionLogger(const std::string& username)
     }
 }
 
+// Logging function to save to CSV for Task 3
 void TransactionLogger::log(
     const std::string& timestamp,
     double price,
@@ -33,27 +36,7 @@ void TransactionLogger::log(
          << orderType << "\n";
 }
 
-std::string TransactionLogger::getLastTransactionTime(const std::string& username) {
-    std::ifstream file(username + "Transactions.csv");
-    if (!file.is_open()) return ""; // No transactions yet
-
-    std::string line;
-    std::string lastTimestamp;
-
-    // Skip header if present
-    std::getline(file, line);
-
-    while (std::getline(file, line)) {
-        if (line.empty()) continue;
-        std::stringstream ss(line);
-        std::string timestamp;
-        std::getline(ss, timestamp, ','); // first column is timestamp
-        lastTimestamp = timestamp;        // update each time
-    }
-
-    return lastTimestamp; // returns empty if no transactions
-}
-
+// To get summary statistics of user activity for Task 3
 void TransactionLogger::computeSummary(
     const std::string& productFilter = "",          // empty string = all products
     const std::string& startTime = ""             // optional: "YYYY-MM-DD HH:MM"
@@ -124,6 +107,7 @@ void TransactionLogger::computeSummary(
     std::cout << "============================" << std::endl;
 }
 
+// To get last 5 transaction history for Task 3
 void TransactionLogger::printRecentTransactions(int limit, const std::string& productFilter)
 {
     std::ifstream file(filename);

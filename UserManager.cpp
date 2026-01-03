@@ -1,3 +1,5 @@
+// For login, registration, reset password, saving user to CSV and printing login menu for Task 2
+
 #include "UserManager.h"
 #include "User.h"
 #include <iostream>
@@ -11,7 +13,7 @@ UserManager::UserManager()
     loadUsers();
 }
 
-
+// Read users from CSV file
 void UserManager::loadUsers()
 {
     users.clear();
@@ -34,14 +36,17 @@ void UserManager::loadUsers()
     }
 }
 
+// Save user to CSV file
 void UserManager::saveUser(const User& user)
 {
     std::ofstream file("users.csv", std::ios::app);
     file << user.toCSV() << std::endl;
 }
 
+// Login function
 User* UserManager::login(const std::string& username, const std::string& password)
 {
+    // Handling empty inputs for Task 5
     if (username.empty() || password.empty())
     {
         std::cout << "Invalid input: username or password is empty." << std::endl;
@@ -60,40 +65,42 @@ User* UserManager::login(const std::string& username, const std::string& passwor
         }
     }
 
+    // Fail login
     std::cout << "Invalid username or password." << std::endl;
     return nullptr;
 }
 
+// To hash the password to make it safe to store
 size_t UserManager::hashPassword(const std::string& password)
 {
     return std::hash<std::string>{}(password);
 }
 
+// Register function
 bool UserManager::registerUser(
     const std::string& fullName,
     const std::string& email,
     const std::string& password
 )
 {
+    // Handling empty inputs for Task 5
     if (fullName.empty() || email.empty() || password.empty())
     {
         std::cout << "Invalid input: all fields are required." << std::endl;
         return false;
     }
 
-    if (password.length() < 6)
-    {
-        std::cout << "Password must be at least 6 characters." << std::endl;
-        return false;
-    }
-
+    // Check if the user's full name and email already exists
     if (userExists(fullName, email))
     {
         std::cout << "User already registered." << std::endl;
         return false;
     }
 
+    // Generating 10 digit username for Task 2 1.2
     std::string username = generateUsername();
+
+    // Hashing password for Task 2 1.3
     size_t passwordHash = hashPassword(password);
 
     User user(username, fullName, email, passwordHash);
@@ -101,11 +108,11 @@ bool UserManager::registerUser(
     saveUser(user);
 
     std::cout << "Account successfully created!" << std::endl;
+    // To show username to user for future login
     std::cout << "Your generated username is: " << username << std::endl;
 
     return true;
 }
-
 
 bool UserManager::userExists(const std::string& fullName, const std::string& email)
 {
@@ -127,6 +134,7 @@ bool UserManager::usernameExists(const std::string& username)
     return false;
 }
 
+// Generate 10 digit unique username
 std::string UserManager::generateUsername()
 {
     std::random_device rd;
@@ -142,6 +150,7 @@ std::string UserManager::generateUsername()
     return username;
 }
 
+// Reset Password function
 bool UserManager::resetPassword()
 {
     std::string username, email, newPassword, confirmPassword;
@@ -187,6 +196,9 @@ bool UserManager::resetPassword()
             std::cout << '*' << std::flush;
         }
     }
+    // Restore terminal settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    std::cout << std::endl;
 
     if (username.empty() || email.empty() ||
         newPassword.empty() || confirmPassword.empty())
@@ -200,12 +212,6 @@ bool UserManager::resetPassword()
         std::cout << "Passwords do not match." << std::endl;
         return false;
     }
-
-
-
-    // Restore terminal settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    std::cout << std::endl;
 
     // std::cout << "Confirm new password: ";
     // std::getline(std::cin, confirmPassword);
@@ -251,6 +257,7 @@ User* UserManager::getCurrentUser()
     return currentUser;
 }
 
+// Show login/register/forgot password menu
 void UserManager::showAuthMenu()
 {
     while (!isLoggedIn())
@@ -274,13 +281,13 @@ void UserManager::showAuthMenu()
         // Try converting to int
         int choice;
         try {
-            choice = std::stoi(input); // throws if not a valid integer
+            choice = std::stoi(input); // throws if not a valid integer for Task 5
         } catch (...) {
             std::cout << "Invalid input! Please enter a number 0-3." << std::endl;
             continue;
         }
 
-        // Check range
+        // Check range for Task 5
         if (choice < 0 || choice > 3) {
             std::cout << "Invalid choice! Please enter a number 0-3." << std::endl;
             continue;
@@ -291,6 +298,7 @@ void UserManager::showAuthMenu()
             std::string name, email, password;
             std::cout << "Full name: ";
             std::getline(std::cin, name);
+            // Handling empty inputs for Task 5
             if (name.empty()) {
                 std::cout << "Name cannot be empty!" << std::endl;
                 continue;
@@ -298,6 +306,7 @@ void UserManager::showAuthMenu()
 
             std::cout << "Email: ";
             std::getline(std::cin, email);
+            // Basic validation to see if it is a valid email for Task 5
             if (email.empty() || email.find('@') == std::string::npos) {
                 std::cout << "Invalid email!" << std::endl;
                 continue;
@@ -327,6 +336,7 @@ void UserManager::showAuthMenu()
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
             std::cout << std::endl;
 
+            // Handling empty inputs for Task 5
             if (password.empty()) {
                 std::cout << "Password cannot be empty!" << std::endl;
                 continue;
@@ -339,6 +349,8 @@ void UserManager::showAuthMenu()
             std::string username, password;
             std::cout << "Username: ";
             std::getline(std::cin, username);
+            
+            // Handling empty inputs for Task 5
             if (username.empty()) {
                 std::cout << "Username cannot be empty!" << std::endl;
                 continue;
@@ -367,6 +379,7 @@ void UserManager::showAuthMenu()
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
             std::cout << std::endl;
 
+            // Handling empty inputs for Task 5
             if (password.empty()) {
                 std::cout << "Password cannot be empty!" << std::endl;
                 continue;

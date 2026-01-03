@@ -1,3 +1,5 @@
+// Candlestick class for Task 1
+
 #include "Candlestick.h"
 #include "MerkelMain.h"
 #include "CSVReader.h"

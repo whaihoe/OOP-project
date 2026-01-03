@@ -18,6 +18,8 @@ class OrderBookEntry
 
         static OrderBookType stringToOrderBookType(std::string s);
 
+        static std::string orderBookTypeToString(OrderBookType type);
+
         static bool compareByTimestamp(OrderBookEntry& e1, OrderBookEntry& e2)
         {
             return e1.timestamp < e2.timestamp;
@@ -30,6 +32,8 @@ class OrderBookEntry
         {
             return e1.price > e2.price;
         }
+
+        void saveToCSV();
 
         double price;
         double amount;

@@ -1,4 +1,5 @@
 #include "OrderBookEntry.h"
+#include <fstream>
 
 OrderBookEntry::OrderBookEntry( double _price, 
                         double _amount, 
@@ -28,4 +29,28 @@ OrderBookType OrderBookEntry::stringToOrderBookType(std::string s)
     return OrderBookType::bid;
   }
   return OrderBookType::unknown;
+}
+
+std::string OrderBookEntry::orderBookTypeToString(OrderBookType type)
+{
+  if (type == OrderBookType::ask)
+  {
+    return "ask";
+  }
+  if (type == OrderBookType::bid)
+  {
+    return "bid";
+  }
+  return "unknown";
+}
+
+void OrderBookEntry::saveToCSV()
+{
+  std::ofstream file("currentOrderBook.csv", std::ios::app);
+  file << timestamp << ","
+        << product << ","
+        << orderBookTypeToString(orderType) << ","
+        << amount << ","
+        << price << "\n";
+
 }

@@ -32,9 +32,6 @@ class OrderBook
         static double getHighPrice(std::vector<OrderBookEntry>& orders);
         static double getLowPrice(std::vector<OrderBookEntry>& orders);
 
-        double getMaxAskPrice(const std::string& product, const std::string& timestamp);
-        double getMinBidPrice(const std::string& product, const std::string& timestamp);
-
     private:
         std::vector<OrderBookEntry> orders;
 };

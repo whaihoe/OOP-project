@@ -1,3 +1,5 @@
+// Candlestick class for Task 1
+
 #pragma once
 
 #include "OrderBook.h"

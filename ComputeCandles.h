@@ -1,3 +1,5 @@
+// To compute candlestick data for Task 1
+
 #include "Candlestick.h"
 #include "CSVReader.h"
 #include "OrderBook.h"

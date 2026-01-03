@@ -1,3 +1,5 @@
+// To compute candlestick data for Task 1
+
 #include "ComputeCandles.h"
 #include "MerkelMain.h"
 #include "DateTime.h"
@@ -71,6 +73,10 @@ std::vector<Candlestick> ComputeCandlesticks::GetCandlesticks(const std::string&
 
     // Read CSV orders
     auto orders = CSVReader::readCSV("20200601.csv");
+    auto currentOrders = CSVReader::readCSV("currentOrderBook.csv");
+
+    // append current orders to orders
+    orders.insert(orders.end(), currentOrders.begin(), currentOrders.end());
 
     DateTime simulatedNow = DateTime::fromString(CurrentTime);
 

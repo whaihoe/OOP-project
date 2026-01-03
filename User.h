@@ -1,3 +1,5 @@
+// User class for Task 2
+
 #pragma once
 #include <string>
 

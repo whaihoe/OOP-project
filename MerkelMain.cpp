@@ -2,14 +2,21 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <chrono>
+#include <format>
+#include <cstdio>
 #include "OrderBookEntry.h"
 #include "CSVReader.h"
 #include "ComputeCandles.h"
 #include "DateTime.h"
 
+// To pass logged in user in Task 2
 MerkelMain::MerkelMain(User& user)
+    // To link to logged in user for Task 2
     : user(user),
+    // To link user to transaction logger for Task 2
     transactionLogger(user.getUsername()),
+    // To link user to wallet for Task 2
     wallet(user.getUsername())
 {
 
@@ -19,14 +26,12 @@ MerkelMain::MerkelMain(User& user)
 void MerkelMain::init()
 {
     int input;
-    std::string lastTxTime = TransactionLogger::getLastTransactionTime(user.getUsername());
-    if (!lastTxTime.empty()) {
-        currentTime = lastTxTime;
-        std::cout << "Resuming from last transaction timestamp: " << currentTime << std::endl;
-    } else {
-        currentTime = orderBook.getEarliestTime();
-        std::cout << "No previous transactions, starting from earliest dataset time: " << currentTime << std::endl;
-    }
+    std::time_t now = std::time(nullptr);
+    std::tm localTm = *std::localtime(&now);
+
+    std::ostringstream oss;
+    oss << std::put_time(&localTm, "%Y/%m/%d %H:%M:%S");
+    currentTime = oss.str();
 
     bool running = true;
 
@@ -63,6 +68,8 @@ void MerkelMain::printMenu()
     std::cout << "9: Print user summary " << std::endl;
     // 10 continue to next timeframe
     std::cout << "10: Continue " << std::endl;
+    // 0 exit
+    std::cout << "10: Exit " << std::endl;
 
     std::cout << "============== " << std::endl;
 
@@ -79,18 +86,49 @@ void MerkelMain::printMarketStats()
     for (std::string const& p : orderBook.getKnownProducts())
     {
         std::cout << "Product: " << p << std::endl;
-        std::vector<OrderBookEntry> AskEntries = orderBook.getOrders(OrderBookType::ask, 
-                                                                p, currentTime);
-        std::cout << "Asks seen: " << AskEntries.size() << std::endl;
-        std::cout << "Max ask: " << OrderBook::getHighPrice(AskEntries) << std::endl;
-        std::cout << "Min ask: " << OrderBook::getLowPrice(AskEntries) << std::endl;
-        
+
+        // Asks
+        auto askEntries = orderBook.getOrders(OrderBookType::ask, p, currentTime);
+        std::cout << "Asks seen: " << askEntries.size() << std::endl;
+
+        if (!askEntries.empty())
+        {
+            std::cout << "Max ask: " << OrderBook::getHighPrice(askEntries) << std::endl;
+            std::cout << "Min ask: " << OrderBook::getLowPrice(askEntries) << std::endl;
+        }
+        else
+        {
+            std::cout << "No asks available at this time." << std::endl;
+        }
+
         // Bids
-        std::vector<OrderBookEntry> BidEntries = orderBook.getOrders(OrderBookType::bid, 
-                                                                p, currentTime);
-        std::cout << "Bids seen: " << BidEntries.size() << std::endl;
-        std::cout << "Max bid: " << OrderBook::getHighPrice(BidEntries) << std::endl;
-        std::cout << "Min bid: " << OrderBook::getLowPrice(BidEntries) << std::endl << std::endl;
+        auto bidEntries = orderBook.getOrders(OrderBookType::bid, p, currentTime);
+        std::cout << "Bids seen: " << bidEntries.size() << std::endl;
+
+        if (!bidEntries.empty())
+        {
+            std::cout << "Max bid: " << OrderBook::getHighPrice(bidEntries) << std::endl;
+            std::cout << "Min bid: " << OrderBook::getLowPrice(bidEntries) << std::endl;
+        }
+        else
+        {
+            std::cout << "No bids available at this time." << std::endl;
+        }
+
+        std::cout << std::endl;
+        // std::cout << "Product: " << p << std::endl;
+        // std::vector<OrderBookEntry> AskEntries = orderBook.getOrders(OrderBookType::ask, 
+        //                                                         p, currentTime);
+        // std::cout << "Asks seen: " << AskEntries.size() << std::endl;
+        // std::cout << "Max ask: " << OrderBook::getHighPrice(AskEntries) << std::endl;
+        // std::cout << "Min ask: " << OrderBook::getLowPrice(AskEntries) << std::endl;
+        
+        // // Bids
+        // std::vector<OrderBookEntry> BidEntries = orderBook.getOrders(OrderBookType::bid, 
+        //                                                         p, currentTime);
+        // std::cout << "Bids seen: " << BidEntries.size() << std::endl;
+        // std::cout << "Max bid: " << OrderBook::getHighPrice(BidEntries) << std::endl;
+        // std::cout << "Min bid: " << OrderBook::getLowPrice(BidEntries) << std::endl << std::endl;
 
 
     }
@@ -112,46 +150,46 @@ void MerkelMain::printMarketStats()
 
 }
 
-
-
+// For Task 4 to generate 5 bids and 5 asks
 void MerkelMain::generateBidsAndAsks()
 {
     for (const std::string& product : orderBook.getKnownProducts())
     {
-        std::vector<std::string> currs = CSVReader::tokenise(product, '/');
-        std::string base = currs[0];
+        auto currs = CSVReader::tokenise(product, '/');
+        std::string base  = currs[0];
         std::string quote = currs[1];
 
-        double bestAsk = orderBook.getMinBidPrice(product, currentTime);
-        double bestBid = orderBook.getMaxAskPrice(product, currentTime);
+        double refPrice = getReferencePrice(product);
 
-        if (bestAsk <= 0 || bestBid <= 0)
-            continue;
+        // Price offsets to overlap
+        double askPrice = refPrice * 0.99; // -0.99%
+        double bidPrice = refPrice * 1.02; // +0.2% (higher than ask!)
 
         // --------------------
-        // ASKS (sell base)
+        // Ensure balances
         // --------------------
-        double baseBalance = wallet.getAmount(base);
-        if (baseBalance == 0.0)
+        if (wallet.getAmount(base) == 0.0)
         {
             wallet.deposit(base, 10);
-            transactionLogger.log(currentTime, 0.0, 10, base, "deposit");
-            std::cout << "Deposited " << base << " 10" << std::endl;
-            baseBalance = 10;
+            // To log all transactions for Task 3 & 4
+            transactionLogger.log(currentTime, 0.0, 10, base, "deposit");   
         }
 
-        // use only 10% of available base for this product
-        double totalAskAmount = baseBalance * 0.10;
-        double askAmountPerOrder = totalAskAmount / 5.0;
+        if (wallet.getAmount(quote) == 0.0)
+        {
+            wallet.deposit(quote, 10000);
+            // To log all transactions for Task 3 & 4
+            transactionLogger.log(currentTime, 0.0, 10, quote, "deposit");
+        }
+
+        // Generating ask orders that are larger in size
+        double askAmount = wallet.getAmount(base) * 0.20 / 5.0;
 
         for (int i = 0; i < 5; ++i)
         {
-            if (askAmountPerOrder <= 0)
-                break;
-
             OrderBookEntry ask{
-                bestAsk,
-                askAmountPerOrder,
+                askPrice + (i * refPrice * 0.0005), // So that not all orders are the same price
+                askAmount,
                 currentTime,
                 product,
                 OrderBookType::ask
@@ -161,34 +199,19 @@ void MerkelMain::generateBidsAndAsks()
             if (wallet.canFulfillOrder(ask))
             {
                 orderBook.insertOrder(ask);
+                // To log all transactions for Task 3 & 4
                 transactionLogger.log(currentTime, ask.price, ask.amount, product, "ask");
             }
         }
 
-        // --------------------
-        // BIDS (buy base using quote)
-        // --------------------
-        double quoteBalance = wallet.getAmount(quote);
-        if (quoteBalance == 0.0)
-        {
-            wallet.deposit(quote, 10);
-            transactionLogger.log(currentTime, 0.0, 10, quote, "deposit");
-            std::cout << "Deposited " << quote << " 10" << std::endl;
-            quoteBalance = 10;
-        }
-
-        // use only 10% of available quote for this product
-        double totalQuoteToSpend = quoteBalance * 0.10;
-        double bidAmountPerOrder = (totalQuoteToSpend / 5.0) / bestBid;
+        // Generating bid orders that are smaller size than ask orders and to calculate how much of it i can buy with the amount
+        double bidAmount = (wallet.getAmount(quote) * 0.10 / 5.0) / bidPrice;
 
         for (int i = 0; i < 5; ++i)
         {
-            if (bidAmountPerOrder <= 0)
-                break;
-
             OrderBookEntry bid{
-                bestBid,
-                bidAmountPerOrder,
+                bidPrice - (i * refPrice * 0.0005), // So that not all orders are the same price
+                bidAmount,
                 currentTime,
                 product,
                 OrderBookType::bid
@@ -198,10 +221,25 @@ void MerkelMain::generateBidsAndAsks()
             if (wallet.canFulfillOrder(bid))
             {
                 orderBook.insertOrder(bid);
+                // To log all transactions for Task 3 & 4
                 transactionLogger.log(currentTime, bid.price, bid.amount, product, "bid");
             }
         }
     }
+}
+
+
+
+double MerkelMain::getReferencePrice(const std::string& product)
+{
+    // Prices approximated as of 2025-03 (documented for Task 4)
+    if (product == "BTC/USDT")  return 65000.0;
+    if (product == "ETH/USDT")  return 3500.0;
+    if (product == "ETH/BTC")   return 0.053;
+    if (product == "DOGE/USDT") return 0.15;
+    if (product == "DOGE/BTC")  return 0.0000023;
+
+    return 1.0; // fallback
 }
 
 
@@ -217,6 +255,8 @@ void MerkelMain::enterAsk()
         std::cout << "MerkelMain::enterAsk Bad input! " << input << std::endl;
     }
     else {
+        // Uppercase product
+        std::transform(tokens[0].begin(), tokens[0].end(), tokens[0].begin(), [](unsigned char c){ return std::toupper(c); });
         try {
             OrderBookEntry obe = CSVReader::stringsToOBE(
                 tokens[1],
@@ -230,6 +270,7 @@ void MerkelMain::enterAsk()
             {
                 std::cout << "Wallet looks good. " << std::endl;
                 orderBook.insertOrder(obe);
+                // To log all transactions for Task 3
                 transactionLogger.log(currentTime, obe.price, obe.amount, obe.product, "ask");
             }
             else {
@@ -254,6 +295,8 @@ void MerkelMain::enterBid()
         std::cout << "MerkelMain::enterBid Bad input! " << input << std::endl;
     }
     else {
+        // Uppercase product
+        std::transform(tokens[0].begin(), tokens[0].end(), tokens[0].begin(), [](unsigned char c){ return std::toupper(c); });
         try {
             OrderBookEntry obe = CSVReader::stringsToOBE(
                 tokens[1],
@@ -268,6 +311,7 @@ void MerkelMain::enterBid()
             {
                 std::cout << "Wallet looks good. " << std::endl;
                 orderBook.insertOrder(obe);
+                // To log all transactions for Task 3
                 transactionLogger.log(currentTime, obe.price, obe.amount, obe.product, "bid");
             }
             else {
@@ -304,8 +348,13 @@ void MerkelMain::gotoNextTimeframe()
         }
         
     }
+    std::time_t now = std::time(nullptr);
+    std::tm localTm = *std::localtime(&now);
 
-    currentTime = orderBook.getNextTime(currentTime);
+    std::ostringstream oss;
+    oss << std::put_time(&localTm, "%Y/%m/%d %H:%M:%S");
+    currentTime = oss.str();
+    // Save wallet data to wallet CSV for Task 3
     wallet.saveToCSV();
 }
 
@@ -344,7 +393,7 @@ void MerkelMain::modifyFunds()
     // Convert currency to upper
     std::transform(currency.begin(), currency.end(), currency.begin(), ::toupper);
 
-    // Step 3: Validate currency
+    // Validate currency
     if (std::find(validCurrencies.begin(), validCurrencies.end(), currency) == validCurrencies.end())
     {
         std::cout << "Invalid currency. Valid options are: ";
@@ -353,12 +402,13 @@ void MerkelMain::modifyFunds()
         return;
     }
 
-    // Step 4: Perform deposit or withdrawal
+    // Perform deposit or withdrawal
     if (action == "deposit")
     {
         if (wallet.deposit(currency, amount))
         {
             std::cout << "Deposit successful." << std::endl;
+            // To log all transactions for Task 3
             transactionLogger.log(currentTime, 0.0, amount, currency, "deposit");
         }
         else
@@ -371,6 +421,7 @@ void MerkelMain::modifyFunds()
         if (wallet.withdraw(currency, amount))
         {
             std::cout << "Withdrawal successful." << std::endl;
+            // To log all transactions for Task 3
             transactionLogger.log(currentTime, 0.0, amount, currency, "withdraw");
         }
         else
@@ -384,6 +435,7 @@ void MerkelMain::modifyFunds()
     }
 }
 
+// For Task 3 user statistics
 void MerkelMain::printSummary()
 {
     std::string choice;
@@ -392,6 +444,7 @@ void MerkelMain::printSummary()
     std::cout << "2: View recent transactions\n";
     std::getline(std::cin, choice);
 
+    // To get summary statistics of user activity for Task 3
     if (choice == "1")
     {
         std::string input;
@@ -431,6 +484,8 @@ void MerkelMain::printSummary()
             std::cout << "Enter a valid product." << std::endl;
         }
     }
+
+    // To get last 5 transaction history for Task 3
     else if (choice == "2")
     {
         std::string product;
@@ -504,6 +559,7 @@ bool MerkelMain::processUserOption(int userOption)
 {
     if (userOption == 0)
     {
+        std::remove("currentOrderBook.csv");
         std::cout << "See you again " << user.getFullName() << "."<< std::endl;
         return false; // signal to exit loop
     }
@@ -517,6 +573,7 @@ bool MerkelMain::processUserOption(int userOption)
     }
     if (userOption == 3) 
     {
+        // For Task 4 to call to generate 5 bids and 5 asks
         generateBidsAndAsks();
     }
     if (userOption == 4) 
@@ -533,14 +590,17 @@ bool MerkelMain::processUserOption(int userOption)
     }
     if (userOption == 7) 
     {
+        // Calling the function to compute and print the candlestick data for Task 1
         ComputeCandlesticks::GetCandlesticks(currentTime);
     }   
     if (userOption == 8) 
     {
+        // To deposit and withdraw money for Task 3
         modifyFunds();
     }       
     if (userOption == 9)
     {
+        // For Task 3 to call user statistics
         printSummary();
     }
     if (userOption == 10)
